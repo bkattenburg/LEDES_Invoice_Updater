@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 import streamlit as st
 
 
-st.set_page_config(page_title="LEDES Matter / Invoice Updater", layout="centered")
+st.set_page_config(page_title="LEDES Field Updater", layout="wide")
 
 
 COMMON_MATTER_FIELDS = [
@@ -16,6 +16,14 @@ COMMON_MATTER_FIELDS = [
 
 COMMON_INVOICE_FIELDS = [
     "INVOICE_NUMBER",
+]
+
+COMMON_CLIENT_FIELDS = [
+    "CLIENT_ID",
+]
+
+COMMON_LAW_FIRM_FIELDS = [
+    "LAW_FIRM_ID",
 ]
 
 
@@ -141,10 +149,10 @@ def derive_output_filename(original_name: str) -> str:
 # -----------------------------
 # UI
 # -----------------------------
-st.title("LEDES Matter / Invoice Updater")
+st.title("LEDES Field Updater")
 st.write(
-    "Upload a LEDES text file, review the current matter and invoice numbers, "
-    "optionally replace either value, and download the updated file as a .txt file."
+    "Upload a LEDES text file, review the current values, optionally replace selected fields, "
+    "and download the updated file as a .txt file."
 )
 
 uploaded_file = st.file_uploader(
@@ -166,26 +174,35 @@ if uploaded_file is not None:
         header = parsed_rows[0]
 
         matter_fields = find_all_matching_fields(header, COMMON_MATTER_FIELDS)
-        matter_field = matter_fields[0] if matter_fields else None
+        matter_index = header.index(matter_fields[0]) if matter_fields else None
+
         invoice_field = find_first_matching_field(header, COMMON_INVOICE_FIELDS)
+        client_field = find_first_matching_field(header, COMMON_CLIENT_FIELDS)
+        law_firm_field = find_first_matching_field(header, COMMON_LAW_FIRM_FIELDS)
 
         if not invoice_field:
             st.error("INVOICE_NUMBER was not found in the header row.")
             st.stop()
 
-        matter_indices = [header.index(field) for field in matter_fields]
-        matter_index = matter_indices[0] if matter_indices else None
         invoice_index = header.index(invoice_field)
+        client_index = header.index(client_field) if client_field else None
+        law_firm_index = header.index(law_firm_field) if law_firm_field else None
 
         original_matter_value = (
             safe_get_first_value(parsed_rows, matter_index) if matter_index is not None else ""
         )
         original_invoice_value = safe_get_first_value(parsed_rows, invoice_index)
+        original_client_value = (
+            safe_get_first_value(parsed_rows, client_index) if client_index is not None else ""
+        )
+        original_law_firm_value = (
+            safe_get_first_value(parsed_rows, law_firm_index) if law_firm_index is not None else ""
+        )
 
         st.subheader("Detected values")
-        col1, col2 = st.columns(2)
+        dcol1, dcol2, dcol3, dcol4 = st.columns(4)
 
-        with col1:
+        with dcol1:
             st.text_input(
                 "Original Matter Number",
                 value=original_matter_value if matter_fields else "Not found",
@@ -197,13 +214,33 @@ if uploaded_file is not None:
                 else "No common matter field was found."
             )
 
-        with col2:
+        with dcol2:
             st.text_input(
                 "Original Invoice Number",
                 value=original_invoice_value,
                 disabled=True,
             )
             st.caption(f"Mapped field: {invoice_field}")
+
+        with dcol3:
+            st.text_input(
+                "Original Client ID",
+                value=original_client_value if client_field else "Not found",
+                disabled=True,
+            )
+            st.caption(
+                f"Mapped field: {client_field}" if client_field else "CLIENT_ID not found."
+            )
+
+        with dcol4:
+            st.text_input(
+                "Original Law Firm ID",
+                value=original_law_firm_value if law_firm_field else "Not found",
+                disabled=True,
+            )
+            st.caption(
+                f"Mapped field: {law_firm_field}" if law_firm_field else "LAW_FIRM_ID not found."
+            )
 
         st.subheader("Update options")
 
@@ -212,19 +249,47 @@ if uploaded_file is not None:
             value=True if matter_fields else False,
             disabled=(not matter_fields),
         )
-
-        new_matter_value = st.text_input(
-            "New Matter Number",
-            value=original_matter_value,
-            disabled=(not update_matter or not matter_fields),
-        )
-
         update_invoice = st.checkbox("Update Invoice Number", value=True)
-        new_invoice_value = st.text_input(
-            "New Invoice Number",
-            value=original_invoice_value,
-            disabled=not update_invoice,
+        update_client = st.checkbox(
+            "Update Client ID",
+            value=True if client_field else False,
+            disabled=(client_field is None),
         )
+        update_law_firm = st.checkbox(
+            "Update Law Firm ID",
+            value=True if law_firm_field else False,
+            disabled=(law_firm_field is None),
+        )
+
+        ucol1, ucol2, ucol3, ucol4 = st.columns(4)
+
+        with ucol1:
+            new_matter_value = st.text_input(
+                "New Matter Number",
+                value=original_matter_value,
+                disabled=(not update_matter or not matter_fields),
+            )
+
+        with ucol2:
+            new_invoice_value = st.text_input(
+                "New Invoice Number",
+                value=original_invoice_value,
+                disabled=not update_invoice,
+            )
+
+        with ucol3:
+            new_client_value = st.text_input(
+                "New Client ID",
+                value=original_client_value,
+                disabled=(not update_client or client_field is None),
+            )
+
+        with ucol4:
+            new_law_firm_value = st.text_input(
+                "New Law Firm ID",
+                value=original_law_firm_value,
+                disabled=(not update_law_firm or law_firm_field is None),
+            )
 
         default_output_name = derive_output_filename(uploaded_file.name)
         output_filename = st.text_input(
@@ -239,12 +304,19 @@ if uploaded_file is not None:
         if st.button("Generate Updated File", type="primary"):
             updated_rows = [row[:] for row in parsed_rows]
 
-            if update_matter and matter_indices:
-                for idx in matter_indices:
+            if update_matter and matter_fields:
+                for field in matter_fields:
+                    idx = header.index(field)
                     updated_rows = update_column_value(updated_rows, idx, new_matter_value)
 
             if update_invoice:
                 updated_rows = update_column_value(updated_rows, invoice_index, new_invoice_value)
+
+            if update_client and client_index is not None:
+                updated_rows = update_column_value(updated_rows, client_index, new_client_value)
+
+            if update_law_firm and law_firm_index is not None:
+                updated_rows = update_column_value(updated_rows, law_firm_index, new_law_firm_value)
 
             updated_text = rebuild_ledes_text(
                 preamble_lines=preamble_lines,
@@ -275,6 +347,7 @@ else:
 
 st.markdown("---")
 st.caption(
-    "Notes: The app detects the invoice field from INVOICE_NUMBER and matter-related fields from common LEDES names "
-    "such as LAW_FIRM_MATTER_ID and CLIENT_MATTER_ID. When Matter Number updating is enabled, all detected matter-related fields are updated together. Disabled update checkboxes leave the original values unchanged."
+    "Notes: The app detects INVOICE_NUMBER, CLIENT_ID, LAW_FIRM_ID, and common matter-related fields such as "
+    "LAW_FIRM_MATTER_ID and CLIENT_MATTER_ID. When Matter Number updating is enabled, all detected matter-related "
+    "fields are updated together. Disabled update checkboxes leave the original values unchanged."
 )
