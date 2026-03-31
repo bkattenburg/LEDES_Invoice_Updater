@@ -244,26 +244,14 @@ if uploaded_file is not None:
 
         st.subheader("Update options")
 
-        update_matter = st.checkbox(
-            "Update Matter Number",
-            value=True if matter_fields else False,
-            disabled=(not matter_fields),
-        )
-        update_invoice = st.checkbox("Update Invoice Number", value=True)
-        update_client = st.checkbox(
-            "Update Client ID",
-            value=True if client_field else False,
-            disabled=(client_field is None),
-        )
-        update_law_firm = st.checkbox(
-            "Update Law Firm ID",
-            value=True if law_firm_field else False,
-            disabled=(law_firm_field is None),
-        )
-
         ucol1, ucol2, ucol3, ucol4 = st.columns(4)
 
         with ucol1:
+            update_matter = st.checkbox(
+                "Update Matter Number",
+                value=True if matter_fields else False,
+                disabled=(not matter_fields),
+            )
             new_matter_value = st.text_input(
                 "New Matter Number",
                 value=original_matter_value,
@@ -271,6 +259,7 @@ if uploaded_file is not None:
             )
 
         with ucol2:
+            update_invoice = st.checkbox("Update Invoice Number", value=True)
             new_invoice_value = st.text_input(
                 "New Invoice Number",
                 value=original_invoice_value,
@@ -278,6 +267,11 @@ if uploaded_file is not None:
             )
 
         with ucol3:
+            update_client = st.checkbox(
+                "Update Client ID",
+                value=True if client_field else False,
+                disabled=(client_field is None),
+            )
             new_client_value = st.text_input(
                 "New Client ID",
                 value=original_client_value,
@@ -285,6 +279,11 @@ if uploaded_file is not None:
             )
 
         with ucol4:
+            update_law_firm = st.checkbox(
+                "Update Law Firm ID",
+                value=True if law_firm_field else False,
+                disabled=(law_firm_field is None),
+            )
             new_law_firm_value = st.text_input(
                 "New Law Firm ID",
                 value=original_law_firm_value,
